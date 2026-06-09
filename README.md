@@ -6,6 +6,10 @@
 
 ## ✨ 特徴
 
+## 📸 スクリーンショット
+
+![screenshot](screenshots/screenshot.png)
+
 - 🎨 **4アニメーションモード**
   - ドット絵（Canvas 2D）
   - 発光2D（ネオンエフェクト）
