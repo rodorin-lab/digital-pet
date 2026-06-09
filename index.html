@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>🦊 シンクロ牧場 v12</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0a1a">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#080818;color:#fff;font-family:sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#app{width:100vw;height:100dvh;display:flex;flex-direction:column;align-items:center;padding:4px;gap:3px}
+#stage{position:relative;width:min(98vw,420px);flex:1;min-height:0;background:radial-gradient(ellipse at 50% 50%,#151035 0%,#080818 70%);border-radius:16px;border:1px solid rgba(120,80,255,0.08);overflow:hidden}
+#cv,#tc3d{position:absolute;top:0;left:0;width:100%!important;height:100%!important;display:block}
+#tc3d{display:none}
+#ui-overlay{position:absolute;top:0;left:0;right:0;padding:8px 10px;display:flex;justify-content:space-between;pointer-events:none;z-index:5}
+#ui-overlay>*{pointer-events:auto}
+.status-chip{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.5);padding:3px 8px;border-radius:12px;font-size:9px;backdrop-filter:blur(4px)}
+.stage-name{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,5vw,36px);font-weight:900;color:rgba(255,255,255,0.03);letter-spacing:4px;pointer-events:none;z-index:1;white-space:nowrap}
+#mode-bar{display:flex;gap:3px;justify-content:center;margin:2px 0;flex-wrap:wrap}
+#mode-bar button{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:#777;padding:5px 10px;border-radius:14px;font-size:11px;cursor:pointer;transition:all .25s}
+#mode-bar button:active{transform:scale(.92)}
+#mode-bar button.active{background:rgba(100,120,255,0.18);border-color:#5588ee;color:#7bf}
+#info-bar{display:flex;gap:6px;font-size:9px;color:#555;justify-content:center;margin:1px 0}
+#info-bar span{display:flex;align-items:center;gap:2px}
+#info-bar .val{color:#aaa}
+#chat-box{width:min(98vw,420px);display:flex;flex-direction:column;gap:2px}
+#bb{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:5px 10px;font-size:12px;text-align:center;min-height:26px;display:flex;align-items:center;justify-content:center;color:#aaa}
+#chat-input-row{display:flex;gap:3px}
+#chat-input-row input{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:5px 10px;font-size:12px;color:#fff;outline:none}
+#chat-input-row input:focus{border-color:#5588ee}
+#chat-input-row button{background:linear-gradient(135deg,#5588ff,#7744ee);border:none;border-radius:14px;padding:4px 12px;color:#fff;font-weight:600;font-size:12px;cursor:pointer}
+#food-btn{background:rgba(255,150,50,0.15)!important;border-color:rgba(255,150,50,0.2)!important;color:#fa0!important}
+#train-btn{background:rgba(50,255,150,0.15)!important;border-color:rgba(50,255,150,0.2)!important;color:#0f8!important}
+#modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(3,5,7,.92);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
+#modal-overlay.open{display:flex}
+#modal{background:#0a0e12;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:24px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto}
+#modal h2{font-size:18px;font-weight:900;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+#modal .sub{font-size:10px;color:#555;margin-bottom:16px}
+.m-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#aaa;border-radius:10px;padding:8px 14px;font-size:11px;cursor:pointer;font-family:inherit;width:100%;text-align:center;margin-bottom:6px;transition:.2s}
+.m-btn:active{transform:scale(.97)}
+.m-btn.pri{background:rgba(100,150,255,0.12);border-color:rgba(100,150,255,0.15);color:#7bf}
+.m-btn.gold{background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.12);color:#fd0}
+.m-btn.grn{background:rgba(50,255,150,0.1);border-color:rgba(50,255,150,0.12);color:#0f8}
+.m-btn.red{background:rgba(255,50,80,0.1);border-color:rgba(255,50,80,0.12);color:#f48}
+.m-btn.disable{opacity:.3;cursor:default}
+.evo-tree{display:flex;gap:6px;overflow-x:auto;padding:8px 0}
+.evo-node{flex:0 0 72px;text-align:center}
+.evo-node .dot{width:32px;height:32px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid rgba(255,255,255,0.1)}
+.evo-node .dot.cur{border-color:#0f8;box-shadow:0 0 12px rgba(0,255,136,0.3)}
+.evo-node .dot.unlocked{background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3)}
+.evo-node .el{font-size:8px;color:#555}
+#train-game{display:none;position:absolute;inset:0;z-index:10;background:rgba(3,5,7,.95);flex-direction:column;align-items:center;justify-content:center}
+#train-game.open{display:flex}
+#train-game .score{font-size:36px;font-weight:900;color:#0f8;margin-bottom:8px}
+#train-game .hint{font-size:10px;color:#555;margin-bottom:12px}
+#train-game .tap-area{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(0,255,136,0.1),transparent);border:2px solid rgba(0,255,136,0.2);display:flex;align-items:center;justify-content:center;font-size:40px;cursor:pointer;transition:.1s}
+#train-game .tap-area:active{transform:scale(.9);background:radial-gradient(circle,rgba(0,255,136,0.2),transparent)}
+@media(max-width:420px){#mode-bar button{padding:4px 8px;font-size:10px}#chat-box{padding:0 2px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas><canvas id="tc3d"></canvas>
+    <div id="ui-overlay">
+      <span class="status-chip" id="evoBadge">🥚 Lv.1</span>
+      <span class="status-chip" id="foodTimer">🍎 100%</span>
+    </div>
+    <div class="stage-name" id="stageName">SINCHRO RANCH</div>
+    <div id="train-game">
+      <div class="score" id="trainScore">0</div>
+      <div class="hint">🖐️ 連打で特訓！</div>
+      <div class="tap-area" id="tapArea">🏋️</div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>❤️<span class="val" id="statHap">50</span></span>
+    <span>⚔️<span class="val" id="statAtk">10</span></span>
+    <span>💨<span class="val" id="statSpd">10</span></span>
+    <span>🍎<span class="val" id="statHunger">80</span></span>
+    <span>✨<span class="val" id="statEnergy">80</span></span>
+  </div>
+  <div id="mode-bar">
+    <button class="active" data-m="care">🏡 育てる</button>
+    <button id="food-btn" data-m="feed">🍎 エサ</button>
+    <button id="train-btn" data-m="train">🏋️ 特訓</button>
+    <button data-m="evolve">🦋 進化</button>
+    <button data-m="battle">⚔️ バトル</button>
+  </div>
+  <div id="chat-box">
+    <div id="bb">💬 モンスターを育てよう！</div>
+    <div id="chat-input-row">
+      <input type="text" id="ci" placeholder="話しかける…" maxlength="40" autocomplete="off">
+      <button id="cg">送信</button>
+    </div>
+  </div>
+</div>
+<div id="modal-overlay"><div id="modal"></div></div>
+<script>
+/* ═════════════════════════════════════════════════════
+   シンクロ牧場 v12 — たまごっち×モンスターファーム×デジモン
+   ═════════════════════════════════════════════════════ */
+
+// ─── 進化定義 ───
+const EVOS = {
+  baby:{name:'ベビー',icon:'🥚',maxLv:3,color:[0x88bbff,0x6644cc],size:0.4,desc:'生まれたばかりのかわいい姿'},
+  child:{name:'チャイルド',icon:'🐣',maxLv:6,color:[0x9977ff,0x7755dd],size:0.55,desc:'活発に動き回る成長期'},
+  adult:{name:'アドルト',icon:'🦊',maxLv:10,color:[0xbb88ff,0x8855dd],size:0.7,desc:'たくましく美しい成熟期'},
+  ultimate:{name:'アルティメット',icon:'🦋',maxLv:15,color:[0xff88dd,0xcc44aa],size:0.85,desc:'神々しい光を放つ完全体'},
+  mega:{name:'メガ',icon:'🐉',maxLv:20,color:[0xffd700,0xff8800],size:1.0,desc:'伝説に語られる究極体'}
+};
+const EVO_ORDER = ['baby','child','adult','ultimate','mega'];
+const EVO_KEYS = Object.keys(EVOS);
+
+// ─── パラメーター ───
+let M = {
+  evoIdx:0,         // 0=baby..4=mega
+  level:1,          // 1〜20
+  hp:30, atk:5, spd:5, hap:50,
+  maxHp:30,
+  hunger:80, energy:80, clean:80,
+  exp:0, expNext:30,
+  wins:0, totalBattles:0,
+  name:'シンクロモン',
+  foodCount:5,
+  birthTime:Date.now(),
+  lastTick:Date.now()
+};
+
+// ─── 進化条件 ───
+function canEvolve(){
+  if(M.evoIdx>=4)return false;
+  const next = EVO_ORDER[M.evoIdx+1];
+  const minLv = EVOS[next].maxLv - 3;
+  if(M.level < minLv) return false;
+  // 条件：ステータスが一定以上
+  if(M.atk < 5 + M.evoIdx*8) return false;
+  if(M.spd < 5 + M.evoIdx*8) return false;
+  if(M.hap < 40 + M.evoIdx*8) return false;
+  return true;
+}
+
+function doEvolve(){
+  if(!canEvolve()) return false;
+  M.evoIdx++;
+  M.atk += 8 + Math.floor(Math.random()*7);
+  M.spd += 8 + Math.floor(Math.random()*7);
+  M.hp = 30 + M.evoIdx*25;
+  M.maxHp = M.hp;
+  M.hap = Math.min(100, M.hap+10);
+  setChat(`🦋 ${EVOS[EVO_ORDER[M.evoIdx]].name}に進化した！`);
+  saveM(); renderAll();
+  return true;
+}
+
+// ─── モードステート ───
+const MODE = { current:'care', pvt:0 }
+
+// ─── Canvas ───
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+const bb=document.getElementById('bb'),ci=document.getElementById('ci');
+const mod=document.getElementById('modal'),mOver=document.getElementById('modal-overlay');
+let W,H;
+
+function resize(){
+  const r=document.getElementById('stage').getBoundingClientRect();
+  W=cv.width=r.width; H=cv.height=r.height;
+}
+resize(); window.addEventListener('resize',resize);
+new ResizeObserver(resize).observe(document.getElementById('stage'));
+
+// ─── アニメパラメーター ───
+const br=(t,s=2.5)=>Math.sin(t*0.0025)*s;
+const sw=(t,s=1.5)=>Math.cos(t*0.001)*s;
+const bk=t=>t%180<5;
+const sc=(s)=>Math.min(W,H)/s;
+
+// ═══════════════════ 進化別キャラ描画 ═══════════════════
+function drawMonster(ctx,t){
+  const eo=EVO_ORDER[M.evoIdx];
+  const e=EVOS[eo];
+  const s=sc(175/e.size);
+  const x=W/2+sw(t,1), y=H/2+br(t,2);
+  const hapGlow=M.hap>70?0.3:M.hap>40?0.15:0;
+
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(s,s);
+
+  // オーラ（高なかよし度で発光）
+  if(M.hap>50){
+    const a=ctx.createRadialGradient(0,0,5,0,0,35);
+    a.addColorStop(0,`rgba(150,100,255,${0.04+hapGlow})`);
+    a.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.shadowColor='rgba(150,100,255,0.1)'; ctx.shadowBlur=20;
+    ctx.fillStyle=a; ctx.beginPath(); ctx.arc(0,0,35,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  // ── 進化段階で描画を変える ──
+  if(M.evoIdx===0) drawBaby(ctx,t);
+  else if(M.evoIdx===1) drawChild(ctx,t);
+  else if(M.evoIdx===2) drawAdult(ctx,t);
+  else if(M.evoIdx===3) drawUltimate(ctx,t);
+  else drawMega(ctx,t);
+
+  // 瞬き（共通）
+  if(bk(t)){
+    ctx.fillStyle='rgba(60,30,120,0.15)';
+    for(let d of[-1,1]){ ctx.beginPath(); ctx.ellipse(d*8,0,5,0.8,0,0,Math.PI*2); ctx.fill(); }
+  }
+
+  ctx.restore();
+}
+
+// ── ベビー ──
+function drawBaby(ctx,t){
+  const col=EVOS.baby.color; const b=Math.sin(t*0.003)*2;
+  ctx.save(); ctx.translate(0,b);
+  // 卵っぽい体
+  const g=ctx.createRadialGradient(-2,-3,1,0,0,14);
+  g.addColorStop(0,'#'+col[0].toString(16).padStart(6,'0'));
+  g.addColorStop(1,'#'+col[1].toString(16).padStart(6,'0'));
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,3,12,14,0,0,Math.PI*2); ctx.fill();
+  // 目
+  for(let d of[-1,1]){
+    ctx.fillStyle='#eee'; ctx.beginPath(); ctx.ellipse(d*5,-1,3,3.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#222'; ctx.beginPath(); ctx.ellipse(d*5,-1,1.5,2,0,0,Math.PI*2); ctx.fill();
+  }
+  // 口（にこにこ）
+  ctx.strokeStyle='rgba(60,30,120,0.2)'; ctx.lineWidth=0.6;
+  ctx.beginPath(); ctx.arc(0,5,2,0.3,Math.PI-0.3); ctx.stroke();
+  ctx.restore();
+}
+
+// ── チャイルド ──
+function drawChild(ctx,t){
+  const col=EVOS.child.color; const b=Math.sin(t*0.003)*2.5;
+  ctx.save(); ctx.translate(0,b);
+  // 体
+  const g=ctx.createRadialGradient(-3,-4,2,0,0,16);
+  g.addColorStop(0,'#'+col[0].toString(16).padStart(6,'0'));
+  g.addColorStop(1,'#'+col[1].toString(16).padStart(6,'0'));
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,2,14,16,0,0,Math.PI*2); ctx.fill();
+  // 耳
+  for(let d of[-1,1]){
+    ctx.fillStyle='#7755cc'; ctx.beginPath(); ctx.ellipse(d*10,-10,3.5,5.5,d*0.2,0,Math.PI*2); ctx.fill();
+  }
+  // 目
+  for(let d of[-1,1]){
+    ctx.fillStyle='#f0f0ff'; ctx.beginPath(); ctx.ellipse(d*6,0,4,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#3a22a0'; ctx.beginPath(); ctx.ellipse(d*6,0,2.2,3,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(d*5,-2,0.8,0,Math.PI*2); ctx.fill();
+  }
+  // しっぽ
+  const tw=Math.sin(t*0.005)*4;
+  ctx.fillStyle='rgba(120,80,210,0.15)'; ctx.save(); ctx.translate(-11+tw*0.3,8+tw*0.2); ctx.rotate((tw-4)*0.05);
+  ctx.beginPath(); ctx.ellipse(0,0,7,3,0.2,0,Math.PI*2); ctx.fill(); ctx.restore();
+  // 口
+  ctx.strokeStyle='rgba(80,50,140,0.2)'; ctx.lineWidth=0.6;
+  ctx.beginPath(); ctx.arc(0,7,1.8,0.2,Math.PI-0.2); ctx.stroke();
+  ctx.restore();
+}
+
+// ── アドルト ──
+function drawAdult(ctx,t){
+  const col=EVOS.adult.color; const b=Math.sin(t*0.0025)*2;
+  ctx.save(); ctx.translate(0,b);
+  const g=ctx.createRadialGradient(-4,-5,3,0,0,20);
+  g.addColorStop(0,'#'+col[0].toString(16).padStart(6,'0'));
+  g.addColorStop(1,'#'+col[1].toString(16).padStart(6,'0'));
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,2,17,19,0,0,Math.PI*2); ctx.fill();
+  // クラウン
+  ctx.fillStyle='#88bbff'; ctx.shadowColor='rgba(80,160,255,0.15)'; ctx.shadowBlur=6;
+  for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(i*8,-12); ctx.lineTo(i*8,-19); ctx.lineTo(i*8+4,-12); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(0,-20,2.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  // 耳
+  for(let d of[-1,1]){
+    ctx.fillStyle='#6a48bb'; ctx.beginPath(); ctx.ellipse(d*12,-10,4,6,d*0.2,0,Math.PI*2); ctx.fill();
+  }
+  // 目
+  for(let d of[-1,1]){
+    ctx.fillStyle='#f0f0ff'; ctx.beginPath(); ctx.ellipse(d*7.5,0,5,6,0,0,Math.PI*2); ctx.fill();
+    const ir=ctx.createRadialGradient(d*7,0,0,d*7,0,3.5); ir.addColorStop(0,'#5a22b0'); ir.addColorStop(1,'#1a0840');
+    ctx.fillStyle=ir; ctx.beginPath(); ctx.ellipse(d*7,0,2.8,4,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#e0e8ff'; ctx.beginPath(); ctx.ellipse(d*6,-2,1.5,1.2,-0.1,0,Math.PI*2); ctx.fill();
+  }
+  // しっぽ
+  const tw=Math.sin(t*0.004)*5;
+  ctx.fillStyle='rgba(120,80,210,0.15)'; ctx.save(); ctx.translate(-14+tw*0.3,10+tw*0.2); ctx.rotate((tw-5)*0.04);
+  ctx.beginPath(); ctx.ellipse(0,0,9,3.5,0.2,0,Math.PI*2); ctx.fill(); ctx.restore();
+  // ほっぺ
+  ctx.fillStyle='rgba(255,120,180,0.1)';
+  for(let d of[-1,1]){ ctx.beginPath(); ctx.ellipse(d*13,5,3.5,2,0,0,Math.PI*2); ctx.fill(); }
+  // 口
+  ctx.strokeStyle='rgba(100,70,170,0.25)'; ctx.lineWidth=0.7;
+  ctx.beginPath(); ctx.arc(0,8,2.2,0.2,Math.PI-0.2); ctx.stroke();
+  // 腕
+  const aw=Math.sin(t*0.002)*3;
+  ctx.fillStyle='#6a48bb'; ctx.beginPath(); ctx.ellipse(-11,7+aw,2.5,4,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11,7-aw,2.5,4,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ── アルティメット ──
+function drawUltimate(ctx,t){
+  const col=EVOS.ultimate.color; const b=Math.sin(t*0.002)*2;
+  ctx.save(); ctx.translate(0,b);
+  // 大オーラ
+  const ag=ctx.createRadialGradient(0,0,5,0,0,35);
+  ag.addColorStop(0,'rgba(200,100,255,0.06)'); ag.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=ag; ctx.beginPath(); ctx.arc(0,0,35,0,Math.PI*2); ctx.fill();
+  // 翼
+  for(let d of[-1,1]){
+    ctx.fillStyle='rgba(200,130,255,0.08)'; ctx.save(); ctx.translate(d*12,-2); ctx.rotate(d*0.3+Math.sin(t*0.002)*0.05);
+    ctx.beginPath(); ctx.ellipse(0,0,10,6,0.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+  // 体
+  const g=ctx.createRadialGradient(-4,-5,3,0,0,22);
+  g.addColorStop(0,'#'+col[0].toString(16).padStart(6,'0'));
+  g.addColorStop(1,'#'+col[1].toString(16).padStart(6,'0'));
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,2,19,21,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,200,255,0.06)'; ctx.beginPath(); ctx.ellipse(-5,-3,6,9,-0.2,0,Math.PI*2); ctx.fill();
+  // クラウン
+  ctx.fillStyle='#ff88dd'; ctx.shadowColor='rgba(255,80,200,0.2)'; ctx.shadowBlur=8;
+  for(let i=-2;i<=2;i++){ const x=i*6;
+    ctx.beginPath(); ctx.moveTo(x,-14); ctx.lineTo(x,-22); ctx.lineTo(x+3,-14); ctx.closePath(); ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(0,-23,3,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  // 耳
+  for(let d of[-1,1]){
+    ctx.fillStyle='#aa55cc'; ctx.beginPath(); ctx.ellipse(d*14,-12,4,7,d*0.2,0,Math.PI*2); ctx.fill();
+  }
+  // 目
+  for(let d of[-1,1]){
+    ctx.fillStyle='#f0f0ff'; ctx.beginPath(); ctx.ellipse(d*8,0,5.5,6.5,0,0,Math.PI*2); ctx.fill();
+    const ir=ctx.createRadialGradient(d*7.5,0,0,d*7.5,0,4); ir.addColorStop(0,'#8833dd'); ir.addColorStop(1,'#220066');
+    ctx.fillStyle=ir; ctx.beginPath(); ctx.ellipse(d*7.5,0,3.2,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#f0f0ff'; ctx.beginPath(); ctx.ellipse(d*6.5,-2.5,1.8,1.4,-0.1,0,Math.PI*2); ctx.fill();
+  }
+  // しっぽ
+  const tw=Math.sin(t*0.0035)*6;
+  ctx.fillStyle='rgba(180,100,220,0.12)'; ctx.save(); ctx.translate(-16+tw*0.3,12+tw*0.2); ctx.rotate((tw-5)*0.04);
+  ctx.beginPath(); ctx.ellipse(0,0,11,4,0.2,0,Math.PI*2); ctx.fill(); ctx.restore();
+  ctx.restore();
+}
+
+// ── メガ ──
+function drawMega(ctx,t){
+  const col=EVOS.mega.color;
+  const b=Math.sin(t*0.002)*2.5;
+  ctx.save(); ctx.translate(0,b);
+  // 大オーラ
+  const ag=ctx.createRadialGradient(0,0,5,0,0,45);
+  ag.addColorStop(0,'rgba(255,215,0,0.08)'); ag.addColorStop(0.5,'rgba(255,136,0,0.03)'); ag.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=ag; ctx.beginPath(); ctx.arc(0,0,45,0,Math.PI*2); ctx.fill();
+  // 翼（大きい）
+  for(let d of[-1,1]){
+    for(let w=0;w<3;w++){
+      ctx.fillStyle=`rgba(255,200,50,${0.04-w*0.01})`;
+      ctx.save(); ctx.translate(d*(14+w*5),-2+w*3); ctx.rotate(d*(0.3+w*0.1)+Math.sin(t*0.002+w)*0.05);
+      ctx.beginPath(); ctx.ellipse(0,0,8,5-w,0.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+  }
+  // 体
+  const g=ctx.createRadialGradient(-4,-5,3,0,0,24);
+  g.addColorStop(0,'#ffdd44'); g.addColorStop(0.5,'#ff8800'); g.addColorStop(1,'#cc4400');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(0,2,21,23,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,200,0.08)'; ctx.beginPath(); ctx.ellipse(-6,-4,7,10,-0.2,0,Math.PI*2); ctx.fill();
+  // クラウン
+  ctx.fillStyle='#ffd700'; ctx.shadowColor='rgba(255,215,0,0.3)'; ctx.shadowBlur=12;
+  for(let i=-2;i<=2;i++){ const x=i*6.5;
+    ctx.beginPath(); ctx.moveTo(x,-15); ctx.lineTo(x,-24); ctx.lineTo(x+3.5,-15); ctx.closePath(); ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(0,-25,3.5,0,Math.PI*2); ctx.fill();
+  // 中央ジェム
+  ctx.fillStyle='#ff66cc'; ctx.beginPath(); ctx.arc(0,-25,2,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  // 目
+  for(let d of[-1,1]){
+    ctx.fillStyle='#f0f0ff'; ctx.beginPath(); ctx.ellipse(d*9,0,6,7,0,0,Math.PI*2); ctx.fill();
+    const ir=ctx.createRadialGradient(d*8.5,0,0,d*8.5,0,4.5); ir.addColorStop(0,'#aa44ff'); ir.addColorStop(1,'#4400aa');
+    ctx.fillStyle=ir; ctx.beginPath(); ctx.ellipse(d*8.5,0,3.5,5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.ellipse(d*7.5,-2.5,2,1.5,-0.1,0,Math.PI*2); ctx.fill();
+  }
+  // しっぽ
+  const tw=Math.sin(t*0.003)*7;
+  ctx.fillStyle='rgba(255,200,50,0.15)'; ctx.save(); ctx.translate(-18+tw*0.3,14+tw*0.2); ctx.rotate((tw-5)*0.04);
+  ctx.beginPath(); ctx.ellipse(0,0,13,4.5,0.2,0,Math.PI*2); ctx.fill(); ctx.restore();
+  ctx.restore();
+}
+
+// ═══════════════════ モード描画 ═══════════════════
+function drawScene(t){
+  cx.clearRect(0,0,W,H);
+  drawMonster(cx,t);
+}
+
+// ═══════════════════ ゲームループ ═══════════════════
+let sadTimer=0;
+function tick(){
+  // 時間経過でパラメータ減少
+  M.hunger = Math.max(0, M.hunger-0.15);
+  M.energy = Math.max(0, M.energy-0.1);
+  if(M.hunger<20){ M.hap = Math.max(0, M.hap-0.3); sadTimer++; }
+  else if(M.energy<20){ M.hap = Math.max(0, M.hap-0.2); }
+  else { if(sadTimer>0)sadTimer--; if(M.hap<100)M.hap+=0.02; }
+  if(sadTimer>300){ setChat('💦 お腹すいたよ…'); sadTimer=0; }
+  // 満腹度が高いとたまにHAP微増
+  if(M.hunger>80 && Math.random()<0.002) M.hap=Math.min(100,M.hap+1);
+  updateInfoBar();
+}
+
+// ═══════════════════ モード切替 ═══════════════════
+function switchMode(m){
+  MODE.current=m;
+  document.querySelectorAll('#mode-bar button').forEach(b=>
+    b.classList.toggle('active',b.dataset.m===m));
+  document.getElementById('train-game').classList.remove('open');
+  if(m==='feed') showFeed();
+  else if(m==='evolve') showEvolve();
+  else if(m==='battle') showBattle();
+  else if(m==='train') startTrain();
+  else if(m==='care'){ setChat('🏡 のんびり過ごしてるよ〜'); closeModal(); }
+}
+
+// ═══════════════════ エサ ──
+function showFeed(){
+  openModal();
+  let html=`<h2>🍎 エサをあげる</h2><div class="sub">所持: ${M.foodCount}個</div>`;
+  if(M.foodCount<=0){
+    html+=`<div class="m-btn disable">🍎 エサがないよ…</div>`;
+  }else{
+    html+=`<div class="m-btn pri" onclick="doFeed(1)">🍎 普通のエサ（満腹+25）</div>`;
+    html+=`<div class="m-btn gold" onclick="doFeed(2)">🌟 特製エサ（満腹+40 なかよし+5）</div>`;
+  }
+  html+=`<div class="m-btn" onclick="closeModal();switchMode('care')">戻る</div>`;
+  mod.innerHTML=html;
+}
+function doFeed(type){
+  if(M.foodCount<=0){ setChat('🍎 エサがない！'); return; }
+  M.foodCount--;
+  const amt=type===2?40:25;
+  M.hunger=Math.min(100,M.hunger+amt);
+  if(type===2) M.hap=Math.min(100,M.hap+5);
+  setChat(`🍎 おいしい！満腹度+${amt}！`);
+  if(M.hunger>=100) setChat('🍎 お腹いっぱい！ありがとう！');
+  saveM(); closeModal(); switchMode('care');
+}
+
+// ═══════════════════ 特訓 ──
+let trainScore=0, trainActive=false, trainTarget=0;
+function startTrain(){
+  if(M.energy<15){ setChat('💤 疲れてるよ…休ませてあげて'); return; }
+  document.getElementById('train-game').classList.add('open');
+  trainScore=0; trainActive=true; trainTarget=5+Math.floor(Math.random()*6);
+  document.getElementById('trainScore').textContent='0/'+trainTarget;
+  document.querySelector('#train-game .hint').textContent=`🖐️ ${trainTarget}回連打で特訓成功！`;
+  document.getElementById('tapArea').onclick=function tap(){
+    if(!trainActive)return;
+    trainScore++;
+    document.getElementById('trainScore').textContent=trainScore+'/'+trainTarget;
+    if(trainScore>=trainTarget){
+      trainActive=false;
+      M.atk+=2+Math.floor(Math.random()*3);
+      M.spd+=1+Math.floor(Math.random()*2);
+      M.energy=Math.max(0,M.energy-15);
+      M.exp+=15;
+      M.hap=Math.min(100,M.hap+3);
+      checkLevelUp();
+      setChat(`🏋️ 特訓成功！ATK+${M.atk%5+2||3} SPD+${M.spd%4+1||2}`);
+      saveM();
+      setTimeout(()=>{ document.getElementById('train-game').classList.remove('open'); switchMode('care'); },1200);
+    }
+  };
+}
+
+// ═══════════════════ 進化 ──
+function showEvolve(){
+  openModal();
+  const cur=EVOS[EVO_ORDER[M.evoIdx]];
+  let html=`<h2>🦋 進化</h2><div class="sub">現在: ${cur.name} (${cur.icon})</div>`;
+  if(M.evoIdx<4){
+    const next=EVOS[EVO_ORDER[M.evoIdx+1]];
+    const ok=canEvolve();
+    html+=`<div class="evo-tree">`;
+    for(let i=0;i<=M.evoIdx;i++){
+      const e=EVOS[EVO_ORDER[i]];
+      html+=`<div class="evo-node"><div class="dot unlocked cur">${e.icon}</div><div style="font-size:7px;color:#0f8">${e.name}</div></div>`;
+    }
+    if(M.evoIdx<4){
+      html+=`<div class="evo-node"><div class="dot" style="${ok?'border-color:#0f8;background:rgba(0,255,136,0.05)':''}">${next.icon}</div><div style="font-size:7px;color:#555">${next.name}</div></div>`;
+      for(let i=M.evoIdx+2;i<=4;i++){
+        const e=EVOS[EVO_ORDER[i]];
+        html+=`<div class="evo-node"><div class="dot">${e.icon}</div><div style="font-size:7px;color:#333">${e.name}</div></div>`;
+      }
+    }
+    html+=`</div>`;
+    if(ok){ html+=`<div class="m-btn gold" onclick="doEvolve();closeModal();switchMode('care')">🦋 進化する！</div>`; }
+    else{
+      const needAtk=5+M.evoIdx*8, needSpd=5+M.evoIdx*8, needHap=40+M.evoIdx*8;
+      let reqs='';
+      if(M.atk<needAtk)reqs+=`⚔️ATK ${M.atk}/${needAtk} `;
+      if(M.spd<needSpd)reqs+=`💨SPD ${M.spd}/${needSpd} `;
+      if(M.hap<needHap)reqs+=`❤️HAP ${M.hap}/${needHap} `;
+      html+=`<div class="m-btn disable">条件不足: ${reqs}</div>`;
+    }
+  }else{
+    html+=`<div style="text-align:center;padding:16px;color:#fd0;font-size:16px">🌟 究極体！最強だ！</div>`;
+  }
+  html+=`<div class="m-btn" onclick="closeModal();switchMode('care')">戻る</div>`;
+  mod.innerHTML=html;
+}
+
+// ═══════════════════ バトル ──
+function showBattle(){
+  openModal();
+  let html=`<h2>⚔️ バトル</h2><div class="sub">戦績: ${M.wins}勝/${M.totalBattles}戦</div>`;
+  html+=`<div class="m-btn pri" onclick="doBattle()">⚔️ ランダムマッチ</div>`;
+  html+=`<div class="m-btn" onclick="closeModal();switchMode('care')">戻る</div>`;
+  mod.innerHTML=html;
+}
+function doBattle(){
+  const eHP=30+Math.floor(Math.random()*50);
+  const eATK=5+Math.floor(Math.random()*20);
+  const eSPD=5+Math.floor(Math.random()*20);
+  const pPower=M.atk+M.spd+M.hp;
+  const ePower=eATK+eSPD+eHP;
+  const winChance=0.3+(pPower/(pPower+ePower))*0.4;
+  const win=Math.random()<winChance;
+  M.totalBattles++;
+  let msg;
+  if(win){ M.wins++; M.exp+=20+Math.floor(Math.random()*15); M.hap=Math.min(100,M.hap+5);
+    msg=`⚔️ 勝利！経験値+${20+Math.floor(Math.random()*15)}`; checkLevelUp();
+  }else{ M.hap=Math.max(0,M.hap-3); msg='⚔️ 負けちゃった…また特訓しよう'; }
+  setChat(msg); saveM();
+  mod.innerHTML=`<h2>⚔️ ${win?'勝利！':'敗北…'}</h2>
+    <div class="sub">相手 HP:${eHP} ATK:${eATK} SPD:${eSPD}</div>
+    <div style="text-align:center;font-size:40px;margin:12px 0">${win?'🏆':'😢'}</div>
+    <div class="m-btn" onclick="closeModal();switchMode('care')">戻る</div>`;
+}
+
+// ═══════════════════ レベルアップ ──
+function checkLevelUp(){
+  while(M.exp>=M.expNext && M.level<20){
+    M.level++;
+    M.exp-=M.expNext;
+    M.expNext=30+M.level*5;
+    M.hp+=5+Math.floor(Math.random()*5);
+    M.maxHp=M.hp;
+    setChat(`🌟 レベル${M.level}にアップ！`);
+  }
+}
+
+// ═══════════════════ UI更新 ──
+function updateInfoBar(){
+  document.getElementById('statHap').textContent=Math.round(M.hap);
+  document.getElementById('statAtk').textContent=Math.round(M.atk);
+  document.getElementById('statSpd').textContent=Math.round(M.spd);
+  document.getElementById('statHunger').textContent=Math.round(M.hunger);
+  document.getElementById('statEnergy').textContent=Math.round(M.energy);
+  const eo=EVOS[EVO_ORDER[M.evoIdx]];
+  document.getElementById('evoBadge').innerHTML=`${eo.icon} Lv.${M.level}`;
+  document.getElementById('foodTimer').textContent=`🍎 ${Math.round(M.hunger)}%`;
+}
+
+function setChat(t){ bb.textContent='💬 '+t; }
+
+// ─── モーダル ───
+function openModal(){ mOver.classList.add('open'); }
+function closeModal(){ mOver.classList.remove('open'); }
+mOver.addEventListener('click',e=>{if(e.target===mOver)closeModal();});
+
+// ─── セーブ ───
+function saveM(){
+  try{ localStorage.setItem('sinchro_ranch',JSON.stringify(M)); }catch(e){}
+}
+function loadM(){
+  try{
+    const d=localStorage.getItem('sinchro_ranch');
+    if(d){ const p=JSON.parse(d); Object.assign(M,p); return true; }
+  }catch(e){}
+  return false;
+}
+
+// ─── イベント ───
+document.querySelectorAll('#mode-bar button').forEach(b=>
+  b.addEventListener('click',()=>switchMode(b.dataset.m)));
+
+document.getElementById('stage').addEventListener('click',()=>{
+  if(MODE.current==='care'){
+    M.hap=Math.min(100,M.hap+2);
+    setChat(['なでなで〜','うれしい！','ありがと！','きもちいい〜'][Math.floor(Math.random()*4)]);
+    saveM();
+  }
+});
+document.getElementById('stage').addEventListener('touchstart',e=>{e.preventDefault();e.target.click()});
+
+// チャット
+function send(){
+  const t=ci.value.trim();
+  if(!t)return;
+  setChat('💬 '+t); ci.value='';
+  M.hap=Math.min(100,M.hap+2); saveM();
+  setTimeout(()=>{
+    const rs=['うん！','いいね！','わかった！','かわいい！','なるほど！','ありがと！','すごい！'];
+    setChat(rs[Math.floor(Math.random()*rs.length)]);
+  },500);
+}
+document.getElementById('cg').addEventListener('click',send);
+ci.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+
+// ─── 起動 ───
+if(!loadM()){
+  setChat('🥚 たまごが生まれたよ！名前をつけてね！');
+  M.name='シンクロモン';
+  saveM();
+}
+
+let tickCounter=0;
+function main(t){
+  drawScene(t);
+
+  tickCounter++;
+  if(tickCounter%10===0) tick();
+
+  requestAnimationFrame(main);
+}
+
+requestAnimationFrame(main);
+switchMode('care');
+console.log('🦊 シンクロ牧場 v12 起動！');
+</script>
+</body>
+</html>
